@@ -2,6 +2,10 @@
 #include <NimBLEDevice.h>
 #include <math.h>
 
+// ===== CONFIGURACIÓN DE DEBUG =====
+const bool DEBUG_ENABLED = 1;  // Cambiar a 0 para deshabilitar todas las salidas por serie
+// ===================================
+
 // Direcciones MAC de los beacons
 const char* addrAlpha = "68:5E:1C:2B:65:29";   // Beacon Alpha
 const char* addrBeta = "68:5E:1C:2B:68:86";    // Beacon Beta
@@ -39,6 +43,26 @@ const float TX_POWER_ALPHA = -75.0;    // RSSI de referencia a 1m para Alpha
 const float TX_POWER_BETA = -91.0;     // RSSI de referencia a 1m para Beta  
 const float TX_POWER_CHARLIE = -75.0;  // RSSI de referencia a 1m para Charlie
 const float EXPONENTE_PERDIDA = 2.0;   // Factor de pérdida de señal
+
+// ===== FUNCIONES DE DEBUG =====
+void debugPrint(String mensaje) {
+  if (DEBUG_ENABLED) {
+    Serial.print(mensaje);
+  }
+}
+
+void debugPrintln(String mensaje) {
+  if (DEBUG_ENABLED) {
+    Serial.println(mensaje);
+  }
+}
+
+void debugPrintln() {
+  if (DEBUG_ENABLED) {
+    Serial.println();
+  }
+}
+// ==============================
 
 /**
  * Calcula la distancia en metros basándose en el valor RSSI
@@ -90,7 +114,7 @@ float calcularDistanciaCharlie(int rssi) {
 bool calcularTrilateration(float distAlpha, float distBeta, float distCharlie, float& x, float& y) {
     // Verificar que todas las distancias sean válidas
     if (distAlpha <= 0 || distBeta <= 0 || distCharlie <= 0) {
-        Serial.println("ERROR: Distancias inválidas para trilateración");
+        debugPrintln("ERROR: Distancias inválidas para trilateración");
         return false;
     }
     
@@ -117,7 +141,7 @@ bool calcularTrilateration(float distAlpha, float distBeta, float distCharlie, f
     float determinante = A * E - B * D;
     
     if (abs(determinante) < 0.0001) {
-        Serial.println("ERROR: Beacons colineales, imposible calcular posición única");
+        debugPrintln("ERROR: Beacons colineales, imposible calcular posición única");
         return false;
     }
     
@@ -176,30 +200,39 @@ class CallbackDispositivosEncontrados: public NimBLEAdvertisedDeviceCallbacks {
 };
 
 void setup() {
-  Serial.begin(115200);
-  Serial.println("=== SISTEMA DE LOCALIZACIÓN BLE INICIADO ===");
-  Serial.println("Configuración de Beacons:");
-  Serial.println("----------------------------------------");
-  
-  // Mostrar configuración de posiciones de beacons
-  Serial.print("Beacon Alpha:   (");
-  Serial.print(BEACON_ALPHA_X, 1);
-  Serial.print(", ");
-  Serial.print(BEACON_ALPHA_Y, 1);
-  Serial.println(")");
-  
-  Serial.print("Beacon Beta:    (");
-  Serial.print(BEACON_BETA_X, 1);
-  Serial.print(", ");
-  Serial.print(BEACON_BETA_Y, 1);
-  Serial.println(")");
-  
-  Serial.print("Beacon Charlie: (");
-  Serial.print(BEACON_CHARLIE_X, 1);
-  Serial.print(", ");
-  Serial.print(BEACON_CHARLIE_Y, 1);
-  Serial.println(")");
-  Serial.println();
+  if (DEBUG_ENABLED) {
+    Serial.begin(115200);
+    Serial.println("=== SISTEMA DE LOCALIZACIÓN BLE INICIADO ===");
+    Serial.println("Configuración de Beacons:");
+    Serial.println("----------------------------------------");
+    
+    // Mostrar configuración de posiciones de beacons
+    Serial.print("Beacon Alpha:   (");
+    Serial.print(BEACON_ALPHA_X, 1);
+    Serial.print(", ");
+    Serial.print(BEACON_ALPHA_Y, 1);
+    Serial.println(")");
+    
+    Serial.print("Beacon Beta:    (");
+    Serial.print(BEACON_BETA_X, 1);
+    Serial.print(", ");
+    Serial.print(BEACON_BETA_Y, 1);
+    Serial.println(")");
+    
+    Serial.print("Beacon Charlie: (");
+    Serial.print(BEACON_CHARLIE_X, 1);
+    Serial.print(", ");
+    Serial.print(BEACON_CHARLIE_Y, 1);
+    Serial.println(")");
+    Serial.println();
+    
+    Serial.print("Posición inicial: (");
+    Serial.print(posicionX, 1);
+    Serial.print(", ");
+    Serial.print(posicionY, 1);
+    Serial.println(")");
+    Serial.println("Esperando detección de beacons...\n");
+  }
   
   // Inicializar sistema BLE
   BLEDevice::init("");
@@ -208,13 +241,6 @@ void setup() {
   pBLEScan->setActiveScan(true);    // Escaneo activo para mejor detección
   pBLEScan->setInterval(100);       // Intervalo de escaneo
   pBLEScan->setWindow(99);          // Ventana de escaneo
-  
-  Serial.print("Posición inicial: (");
-  Serial.print(posicionX, 1);
-  Serial.print(", ");
-  Serial.print(posicionY, 1);
-  Serial.println(")");
-  Serial.println("Esperando detección de beacons...\n");
   
   delay(1000);
 }
@@ -238,58 +264,62 @@ void loop() {
     pBLEScan->start(1, false);
     
     // === MOSTRAR ESTADO DE CONEXIÓN DE BEACONS ===
-    Serial.println("Estado de Conexión:");
-    Serial.print("Alpha: ");
-    Serial.print(encontradoAlpha ? "CONECTADO" : "DESCONECTADO");
-    if (encontradoAlpha) {
-      Serial.print(" | RSSI: ");
-      Serial.print(rssiAlpha);
-      Serial.print("dBm | Distancia: ");
-      Serial.print(calcularDistanciaAlpha(rssiAlpha), 2);
-      Serial.print("m");
+    if (DEBUG_ENABLED) {
+      Serial.println("Estado de Conexión:");
+      Serial.print("Alpha: ");
+      Serial.print(encontradoAlpha ? "CONECTADO" : "DESCONECTADO");
+      if (encontradoAlpha) {
+        Serial.print(" | RSSI: ");
+        Serial.print(rssiAlpha);
+        Serial.print("dBm | Distancia: ");
+        Serial.print(calcularDistanciaAlpha(rssiAlpha), 2);
+        Serial.print("m");
+      }
+      Serial.println();
+      
+      Serial.print("Beta: ");
+      Serial.print(encontradoBeta ? "CONECTADO" : "DESCONECTADO");
+      if (encontradoBeta) {
+        Serial.print(" | RSSI: ");
+        Serial.print(rssiBeta);
+        Serial.print("dBm | Distancia: ");
+        Serial.print(calcularDistanciaBeta(rssiBeta), 2);
+        Serial.print("m");
+      }
+      Serial.println();
+      
+      Serial.print("Charlie: ");
+      Serial.print(encontradoCharlie ? "CONECTADO" : "DESCONECTADO");
+      if (encontradoCharlie) {
+        Serial.print(" | RSSI: ");
+        Serial.print(rssiCharlie);
+        Serial.print("dBm | Distancia: ");
+        Serial.print(calcularDistanciaCharlie(rssiCharlie), 2);
+        Serial.print("m");
+      }
+      Serial.println();
+      Serial.println("----------------------------------------");
     }
-    Serial.println();
-    
-    Serial.print("Beta: ");
-    Serial.print(encontradoBeta ? "CONECTADO" : "DESCONECTADO");
-    if (encontradoBeta) {
-      Serial.print(" | RSSI: ");
-      Serial.print(rssiBeta);
-      Serial.print("dBm | Distancia: ");
-      Serial.print(calcularDistanciaBeta(rssiBeta), 2);
-      Serial.print("m");
-    }
-    Serial.println();
-    
-    Serial.print("Charlie: ");
-    Serial.print(encontradoCharlie ? "CONECTADO" : "DESCONECTADO");
-    if (encontradoCharlie) {
-      Serial.print(" | RSSI: ");
-      Serial.print(rssiCharlie);
-      Serial.print("dBm | Distancia: ");
-      Serial.print(calcularDistanciaCharlie(rssiCharlie), 2);
-      Serial.print("m");
-    }
-    Serial.println();
-    Serial.println("----------------------------------------");
     
     // === LÓGICA PRINCIPAL DE CÁLCULO ===
     // Solo calcular nueva posición si los 3 beacons están conectados
     if (encontradoAlpha && encontradoBeta && encontradoCharlie) {
-      Serial.println("✓ TODOS LOS BEACONS DETECTADOS - CALCULANDO POSICIÓN");
+      debugPrintln("✓ TODOS LOS BEACONS DETECTADOS - CALCULANDO POSICIÓN");
       
       // Calcular distancias a cada beacon usando funciones individuales
       float distanciaAlpha = calcularDistanciaAlpha(rssiAlpha);
       float distanciaBeta = calcularDistanciaBeta(rssiBeta);
       float distanciaCharlie = calcularDistanciaCharlie(rssiCharlie);
       
-      Serial.print("Distancias medidas: Alpha=");
-      Serial.print(distanciaAlpha, 2);
-      Serial.print("m, Beta=");
-      Serial.print(distanciaBeta, 2);
-      Serial.print("m, Charlie=");
-      Serial.print(distanciaCharlie, 2);
-      Serial.println("m");
+      if (DEBUG_ENABLED) {
+        Serial.print("Distancias medidas: Alpha=");
+        Serial.print(distanciaAlpha, 2);
+        Serial.print("m, Beta=");
+        Serial.print(distanciaBeta, 2);
+        Serial.print("m, Charlie=");
+        Serial.print(distanciaCharlie, 2);
+        Serial.println("m");
+      }
       
       // Intentar calcular nueva posición mediante trilateración
       float nuevaX, nuevaY;
@@ -301,43 +331,47 @@ void loop() {
         posicionX = nuevaX;
         posicionY = nuevaY;
         
-        Serial.print("✓ NUEVA POSICIÓN CALCULADA: (");
-        Serial.print(posicionX, 2);
-        Serial.print(", ");
-        Serial.print(posicionY, 2);
-        Serial.print(")m");
-        
-        // Mostrar calidad del cálculo
-        if (error < 0.5) {
-          Serial.println(" [EXCELENTE]");
-        } else if (error < 1.0) {
-          Serial.println(" [BUENA]");
-        } else if (error < 2.0) {
-          Serial.println(" [REGULAR]");
-        } else {
-          Serial.println(" [POBRE]");
+        if (DEBUG_ENABLED) {
+          Serial.print("✓ NUEVA POSICIÓN CALCULADA: (");
+          Serial.print(posicionX, 2);
+          Serial.print(", ");
+          Serial.print(posicionY, 2);
+          Serial.print(")m");
+          
+          // Mostrar calidad del cálculo
+          if (error < 0.5) {
+            Serial.println(" [EXCELENTE]");
+          } else if (error < 1.0) {
+            Serial.println(" [BUENA]");
+          } else if (error < 2.0) {
+            Serial.println(" [REGULAR]");
+          } else {
+            Serial.println(" [POBRE]");
+          }
+          
+          Serial.print("Error promedio: ");
+          Serial.print(error, 2);
+          Serial.println("m");
         }
         
-        Serial.print("Error promedio: ");
-        Serial.print(error, 2);
-        Serial.println("m");
-        
       } else {
-        Serial.println("✗ ERROR EN TRILATERACIÓN - Manteniendo posición anterior");
+        debugPrintln("✗ ERROR EN TRILATERACIÓN - Manteniendo posición anterior");
       }
       
     } else {
-      Serial.println("⚠ BEACONS INSUFICIENTES - Manteniendo última posición conocida");
+      debugPrintln("⚠ BEACONS INSUFICIENTES - Manteniendo última posición conocida");
     }
     
     // === MOSTRAR POSICIÓN FINAL ACTUAL ===
-    Serial.println("========================================");
-    Serial.print("POSICIÓN ACTUAL: (");
-    Serial.print(posicionX, 2);
-    Serial.print(", ");
-    Serial.print(posicionY, 2);
-    Serial.println(")m");
-    Serial.println("========================================\n");
+    if (DEBUG_ENABLED) {
+      Serial.println("========================================");
+      Serial.print("POSICIÓN ACTUAL: (");
+      Serial.print(posicionX, 2);
+      Serial.print(", ");
+      Serial.print(posicionY, 2);
+      Serial.println(")m");
+      Serial.println("========================================\n");
+    }
     
     // Limpiar resultados del escaneo para la próxima iteración
     pBLEScan->clearResults();
